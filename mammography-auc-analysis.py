@@ -13,15 +13,26 @@ np.random.seed(42)
 data = pd.read_csv('mammography.csv', header=None)
 
 # %%
+def predictAndEvaluate(X, ground_truth):
+    clf = LocalOutlierFactor()#n_neighbors=20, contamination=0.1)
+    y_pred = clf.fit_predict(X)
+    fpr, tpr, thresholds = metrics.roc_curve(ground_truth, clf.negative_outlier_factor_, pos_label=1)
+    auc = metrics.auc(fpr, tpr)
+    f1 = metrics.f1_score(ground_truth, y_pred)
+    return (auc, f1)
+
+# %%
 results = [] # (name, auc, f1)
 
 # %%
-data
+## Need to flip class label, LOF outputs 1 for an inlier and -1 for an outlier
+ground_truth = data.iloc[:,-1].apply(lambda x: -int(x.strip("'"))).values
+data.iloc[:, -1] = ground_truth
+X = data.values[:,:-1]
+print(data.shape, X.shape, ground_truth.shape)
 
 # %%
-ground_truth = data.iloc[:,-1].apply(lambda x: -int(x.strip("'"))).values
-X = data.values[:,:-1]
-print(data.shape, X.shape)
+data
 
 # %%
 counter = Counter(ground_truth)
@@ -30,44 +41,35 @@ for k,v in counter.items():
 	print('Class=%s, Count=%d, Percentage=%.3f%%' % (k, v, per))
 
 # %%
-def evaluate(ground_truth, y_pred):
-    fpr, tpr, thresholds = metrics.roc_curve(ground_truth, y_pred)
-    auc = metrics.auc(fpr, tpr)
-    f1 = metrics.f1_score(ground_truth, y_pred)
-    return (auc, f1)
+
 
 # %%
-clf = LocalOutlierFactor()#n_neighbors=20, contamination=0.1)
-y_pred = clf.fit_predict(X)
-auc, f1 = evaluate(ground_truth, y_pred)
+auc, f1 = predictAndEvaluate(X, ground_truth)
 results.append(("Full data", auc, f1))
 print(auc, f1)
 
 # %%
 dedupData = data.drop_duplicates()
-ground_truth = dedupData.iloc[:,-1].apply(lambda x: -int(x.strip("'"))).values
+ground_truth = dedupData.values[:, -1]
 X = dedupData.values[:,:-1]
 print(dedupData.shape, X.shape)
 
 # %%
-clf = LocalOutlierFactor()#n_neighbors=20, contamination=0.1)
-y_pred = clf.fit_predict(X)
-auc, f1 = evaluate(ground_truth, y_pred)
+auc, f1 = predictAndEvaluate(X, ground_truth)
 results.append(("Dedup data", auc, f1))
 print(auc, f1)
 
 # %%
-shuffled = data.sample(frac=1).reset_index(drop=True)
+
 
 # %%
-ground_truth = shuffled.iloc[:,-1].apply(lambda x: -int(x.strip("'"))).values
+shuffled = data.sample(frac=1).reset_index(drop=True)
+ground_truth = shuffled.values[:, -1]
 X = shuffled.values[:,:-1]
 print(shuffled.shape, X.shape)
 
 # %%
-clf = LocalOutlierFactor()#n_neighbors=20, contamination=0.1)
-y_pred = clf.fit_predict(X)
-auc, f1 = evaluate(ground_truth, y_pred)
+auc, f1 = predictAndEvaluate(X, ground_truth)
 results.append(("Full data shuffled", auc, f1))
 print(auc, f1)
 
@@ -75,15 +77,13 @@ print(auc, f1)
 
 
 # %%
-shuffledDedup = data.sample(frac=1).reset_index(drop=True).drop_duplicates()
-ground_truth = shuffledDedup.iloc[:,-1].apply(lambda x: -int(x.strip("'"))).values
+shuffledDedup = shuffled.drop_duplicates()
+ground_truth = shuffledDedup.values[:, -1]
 X = shuffledDedup.values[:,:-1]
 print(dedupData.shape, X.shape)
 
 # %%
-clf = LocalOutlierFactor()#n_neighbors=20, contamination=0.1)
-y_pred = clf.fit_predict(X)
-auc, f1 = evaluate(ground_truth, y_pred)
+auc, f1 = predictAndEvaluate(X, ground_truth)
 results.append(("Dedup data shuffled", auc, f1))
 print(auc, f1)
 
